@@ -5,7 +5,7 @@
   لا تضع service_role أو أي مفتاح سري في هذا الملف.
 */
 window.HAMADA_CONFIG = {
-  SUPABASE_URL: "https://inkbrruymideuutfmgwz.supabase.com",
+  SUPABASE_URL: "https://inkbrruymideuutfmgwz.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_Rt-U0I3ltScJTnYPa0k9JA_UMO_o7HW",
   WHATSAPP_NUMBER: "212766445061",
   CURRENCY: "DH"
