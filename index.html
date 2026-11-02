@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Hamada Shop | ملابس الأطفال</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">H</span><span>Hamada <b>Shop</b></span></a>
+    <nav class="nav">
+      <a href="#products" data-ar="المنتجات" data-fr="Produits">المنتجات</a>
+      <a href="#about" data-ar="من نحن" data-fr="À propos">من نحن</a>
+    </nav>
+    <button id="langToggle" class="lang-btn" type="button">Français</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow" data-ar="أناقة صغيرة، فرحة كبيرة" data-fr="Petite élégance, grand bonheur">أناقة صغيرة، فرحة كبيرة</span>
+        <h1 data-ar="أجمل إطلالة لطفلك تبدأ من هنا" data-fr="Le plus joli look de votre enfant commence ici">أجمل إطلالة لطفلك تبدأ من هنا</h1>
+        <p data-ar="ملابس أطفال مختارة بعناية، تجمع بين الراحة والأناقة." data-fr="Des vêtements pour enfants choisis avec soin, entre confort et élégance.">ملابس أطفال مختارة بعناية، تجمع بين الراحة والأناقة.</p>
+        <a class="button gold-button" href="#products" data-ar="اكتشف المنتجات" data-fr="Découvrir">اكتشف المنتجات</a>
+      </div>
+      <div class="hero-art" aria-hidden="true"><div class="sun"></div><div class="hero-card"><span>H</span><small>HAMADA SHOP</small></div></div>
+    </section>
+
+    <section class="category-row" aria-label="الفئات">
+      <button class="category-chip active" data-category="all" data-ar="الكل" data-fr="Tout">الكل</button>
+      <button class="category-chip" data-category="boys" data-ar="ملابس الأولاد" data-fr="Garçons">ملابس الأولاد</button>
+      <button class="category-chip" data-category="girls" data-ar="ملابس البنات" data-fr="Filles">ملابس البنات</button>
+      <button class="category-chip" data-category="babies" data-ar="ملابس الرضع" data-fr="Bébés">ملابس الرضع</button>
+    </section>
+
+    <section id="products" class="section">
+      <div class="section-heading">
+        <div><span class="eyebrow" data-ar="تسوق الآن" data-fr="Achetez maintenant">تسوق الآن</span><h2 data-ar="منتجاتنا" data-fr="Nos produits">منتجاتنا</h2></div>
+        <p id="productCount"></p>
+      </div>
+      <div id="productsGrid" class="products-grid"><div class="empty-state">جارٍ تحميل المنتجات…</div></div>
+    </section>
+
+    <section id="about" class="about">
+      <div><span class="eyebrow" data-ar="Hamada Shop" data-fr="Hamada Shop">Hamada Shop</span><h2 data-ar="راحة طفلك أولويتنا" data-fr="Le confort de votre enfant, notre priorité">راحة طفلك أولويتنا</h2></div>
+      <p data-ar="اختر القطعة التي تعجبك، ثم اطلبها بسهولة عبر واتساب. نؤكد معك تفاصيل الطلب والتوصيل." data-fr="Choisissez votre article et commandez facilement sur WhatsApp. Nous confirmerons les détails et la livraison avec vous.">اختر القطعة التي تعجبك، ثم اطلبها بسهولة عبر واتساب. نؤكد معك تفاصيل الطلب والتوصيل.</p>
+    </section>
+  </main>
+
+  <footer><span>© <span id="year"></span> Hamada Shop</span><a href="admin.html" data-ar="لوحة الإدارة" data-fr="Administration">لوحة الإدارة</a></footer>
+</body>
+</html>
