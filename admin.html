@@ -1,46 +1,121 @@
+
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>إدارة Hamada Shop</title><link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>إدارة Hamada Shop</title>
+  <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script><script defer src="admin.js"></script>
+  <script src="config.js"></script>
+  <script defer src="admin.js"></script>
 </head>
 <body class="admin-body">
-  <header class="topbar"><a class="brand" href="index.html"><span class="brand-mark">H</span><span>Hamada <b>Shop</b></span></a><a href="index.html">العودة إلى المتجر</a></header>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">H</span>
+      <span>Hamada <b>Shop</b></span>
+    </a>
+    <a href="index.html">العودة إلى المتجر</a>
+  </header>
+
   <main class="admin-wrap">
+
     <section id="loginPanel" class="panel narrow">
-      <span class="eyebrow">ADMIN</span><h1>تسجيل دخول الإدارة</h1>
-      <p class="muted">استخدم البريد الإلكتروني وكلمة المرور لحساب الإدارة الذي أنشأته في Supabase Auth.</p>
+      <span class="eyebrow">ADMIN</span>
+      <h1>تسجيل دخول الإدارة</h1>
+      <p class="muted">استخدم حساب الإدارة الخاص بك.</p>
+
       <form id="loginForm" class="form">
-        <label>البريد الإلكتروني<input id="email" type="email" required autocomplete="username"></label>
-        <label>كلمة المرور<input id="password" type="password" required autocomplete="current-password"></label>
+        <label>البريد الإلكتروني
+          <input id="email" type="email" required autocomplete="username">
+        </label>
+
+        <label>كلمة المرور
+          <input id="password" type="password" required autocomplete="current-password">
+        </label>
+
         <button class="button gold-button" type="submit">دخول</button>
       </form>
+
       <p id="loginMessage" class="notice" role="status"></p>
     </section>
 
     <section id="dashboard" class="hidden">
-      <div class="admin-title"><div><span class="eyebrow">HAMADA SHOP</span><h1>لوحة الإدارة</h1></div><button id="logoutBtn" class="button outline">تسجيل الخروج</button></div>
+
+      <div class="admin-title">
+        <div>
+          <span class="eyebrow">HAMADA SHOP</span>
+          <h1>لوحة الإدارة</h1>
+        </div>
+        <button id="logoutBtn" class="button outline">تسجيل الخروج</button>
+      </div>
+
+      <section class="panel">
+        <h2>إدارة الطلبات</h2>
+        <p class="muted">عرض طلبات الزبائن وتغيير حالتها.</p>
+
+        <button id="refreshOrders" class="button gold-button" type="button">
+          تحديث الطلبات
+        </button>
+
+        <p id="ordersMessage" class="notice" role="status"></p>
+
+        <div id="adminOrders">جارٍ تحميل الطلبات...</div>
+      </section>
+
       <section class="panel">
         <h2>إضافة منتج</h2>
+
         <form id="productForm" class="form form-grid">
-          <label>اسم المنتج بالعربية<input id="name" required maxlength="120"></label>
-          <label>اسم المنتج بالفرنسية<input id="name_fr" maxlength="120"></label>
-          <label>الثمن بالدرهم<input id="price" type="number" min="0" step="0.01" required></label>
-          <label>الفئة<select id="category" required><option value="boys">الأولاد</option><option value="girls">البنات</option><option value="babies">الرضع</option></select></label>
-          <label class="wide">رابط صورة المنتج<input id="image_url" type="url" placeholder="https://..."></label>
-          <label class="wide">الوصف بالعربية<textarea id="description" rows="2"></textarea></label>
-          <label class="wide">الوصف بالفرنسية<textarea id="description_fr" rows="2"></textarea></label>
-          <button class="button gold-button wide" type="submit">حفظ المنتج</button>
+          <label>اسم المنتج بالعربية
+            <input id="name" required maxlength="120">
+          </label>
+
+          <label>اسم المنتج بالفرنسية
+            <input id="name_fr" maxlength="120">
+          </label>
+
+          <label>الثمن بالدرهم
+            <input id="price" type="number" min="0" step="0.01" required>
+          </label>
+
+          <label>الفئة
+            <select id="category" required>
+              <option value="boys">الأولاد</option>
+              <option value="girls">البنات</option>
+              <option value="babies">الرضع</option>
+            </select>
+          </label>
+
+          <label class="wide">رابط صورة المنتج
+            <input id="image_url" type="url" placeholder="https://...">
+          </label>
+
+          <label class="wide">الوصف بالعربية
+            <textarea id="description" rows="2"></textarea>
+          </label>
+
+          <label class="wide">الوصف بالفرنسية
+            <textarea id="description_fr" rows="2"></textarea>
+          </label>
+
+          <button class="button gold-button wide" type="submit">
+            حفظ المنتج
+          </button>
         </form>
+
         <p id="productMessage" class="notice" role="status"></p>
       </section>
+
       <section class="panel">
         <h2>المنتجات الحالية</h2>
-        <div id="adminProducts" class="admin-products">جارٍ التحميل…</div>
+        <div id="adminProducts" class="admin-products">
+          جارٍ تحميل المنتجات...
+        </div>
       </section>
-      <p class="muted small-note">طلبات واتساب لا تُسجّل تلقائياً في جدول orders؛ هذه النسخة تفتح محادثة واتساب فقط.</p>
+
     </section>
   </main>
 </body>
