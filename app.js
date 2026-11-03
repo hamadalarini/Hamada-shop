@@ -1,4 +1,174 @@
 
+function showOrderForm(product) {
+  document.querySelector("#orderModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "orderModal";
+  modal.style.cssText = "position:fixed;inset:0;background:#0009;z-index:99999;display:flex;align-items:center;justify-content:center;padding:15px;overflow:auto;";
+
+  modal.innerHTML = `
+    <div style="background:white;color:#222;width:100%;max-width:480px;padding:22px;border-radius:14px;max-height:90vh;overflow:auto;">
+      <h2>${language === "ar" ? "إتمام الطلب" : "Commander"}</h2>
+      <p><strong>${escapeHtml(productName(product))}</strong></p>
+      <p>${language === "ar" ? "السعر:" : "Prix :"} ${formatPrice(product.price)}</p>
+
+      <form id="customerOrderForm">
+        <label>${language === "ar" ? "الاسم الكامل" : "Nom complet"}</label>
+        <input name="customer_name" required maxlength="120" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "رقم الهاتف" : "Téléphone"}</label>
+        <input name="phone" type="tel" required maxlength="30" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "المدينة" : "Ville"}</label>
+        <input name="city" required maxlength="100" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "العنوان بالتفصيل" : "Adresse détaillée"}</label>
+        <textarea name="address" required maxlength="500" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px"></textarea>
+
+        <label>${language === "ar" ? "المقاس (اختياري)" : "Taille (facultatif)"}</label>
+        <input name="size" maxlength="50" placeholder="مثلاً: 4 سنوات" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "اللون (اختياري)" : "Couleur (facultatif)"}</label>
+        <input name="color" maxlength="50" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "الكمية" : "Quantité"}</label>
+        <input name="quantity" type="number" min="1" max="20" value="1" required style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px">
+
+        <label>${language === "ar" ? "ملاحظات (اختياري)" : "Remarques (facultatif)"}</label>
+        <textarea name="notes" maxlength="500" style="width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px"></textarea>
+
+        <p><strong>${language === "ar" ? "الدفع عند الاستلام" : "Paiement à la livraison"}</strong></p>
+
+        <button type="submit" style="width:100%;padding:14px;background:#b58a42;color:white;border:0;border-radius:8px;font-size:16px;cursor:pointer">
+          ${language === "ar" ? "تأكيد الطلب عبر واتساب" : "Confirmer via WhatsApp"}
+        </button>
+
+        <button type="button" id="closeOrder" style="width:100%;padding:12px;margin-top:8px;border:0;background:#eee;border-radius:8px;cursor:pointer">
+          ${language === "ar" ? "إلغاء" : "Annuler"}
+        </button>
+        <p id="orderMessage" role="status"></p>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  $("#closeOrder").addEventListener("click", () => modal.remove());
+
+  modal.addEventListener("click", event => {
+    if (event.target === modal) modal.remove();
+  });
+
+  $("#customerOrderForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const message = $("#orderMessage");
+    const submit = form.querySelector('button[type="submit"]');
+    const values = new FormData(form);
+
+    const quantity = Number(values.get("quantity"));
+    const price = Number(product.price);
+
+    if (!supabase) {
+      message.textContent = language === "ar"
+        ? "تعذر الاتصال بقاعدة البيانات."
+        : "Connexion à la base de données impossible.";
+      return;
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || !Number.isFinite(price) || price < 0) {
+      message.textContent = language === "ar" ? "تحقق من الكمية والسعر." : "Vérifiez la quantité et le prix.";
+      return;
+    }
+
+    const order = {
+      customer_name: String(values.get("customer_name") || "").trim(),
+      phone: String(values.get("phone") || "").trim(),
+      city: String(values.get("city") || "").trim(),
+      address: String(values.get("address") || "").trim(),
+      product_name: productName(product),
+      size: String(values.get("size") || "").trim(),
+      color: String(values.get("color") || "").trim(),
+      quantity,
+      unit_price: price,
+      notes: String(values.get("notes") || "").trim(),
+      status: "جديد"
+    };
+
+    if (!order.customer_name || !order.phone || !order.city || !order.address) {
+      message.textContent = language === "ar"
+        ? "يرجى ملء الاسم والهاتف والمدينة والعنوان."
+        : "Veuillez remplir les champs obligatoires.";
+      return;
+    }
+
+    const total = price * quantity;
+
+    const whatsappText = [
+      "طلب جديد من Hamada Shop",
+      "الاسم: " + order.customer_name,
+      "الهاتف: " + order.phone,
+      "المدينة: " + order.city,
+      "العنوان: " + order.address,
+      "المنتج: " + order.product_name,
+      "المقاس: " + (order.size || "غير محدد"),
+      "اللون: " + (order.color || "غير محدد"),
+      "الكمية: " + quantity,
+      "سعر الوحدة: " + price + " DH",
+      "المجموع: " + total + " DH",
+      "ملاحظات: " + (order.notes || "لا توجد"),
+      "الدفع عند الاستلام"
+    ].join("\n");
+
+    const whatsappUrl = "https://wa.me/212766445061?text=" + encodeURIComponent(whatsappText);
+
+    submit.disabled = true;
+    submit.textContent = language === "ar" ? "جارٍ تسجيل الطلب..." : "Enregistrement...";
+
+    let whatsappWindow = null;
+
+    try {
+      // فتح نافذة واتساب أثناء ضغطة الزبون لتفادي منع النوافذ المنبثقة
+      whatsappWindow = window.open("about:blank", "_blank");
+
+      const { error } = await supabase.from("orders").insert([order]);
+
+      if (error) throw error;
+
+      form.innerHTML = `
+        <h3 style="color:green">${language === "ar" ? "تم تسجيل طلبك بنجاح!" : "Commande enregistrée !"}</h3>
+        <p>${language === "ar" ? "اضغط الزر لإرسال تفاصيل الطلب عبر واتساب." : "Cliquez pour envoyer votre commande sur WhatsApp."}</p>
+        <a href="${whatsappUrl}" target="_blank" rel="noopener"
+          style="display:block;text-align:center;text-decoration:none;padding:14px;background:#25D366;color:white;border-radius:8px;font-weight:bold">
+          ${language === "ar" ? "إرسال الطلب عبر واتساب" : "Envoyer sur WhatsApp"}
+        </a>
+        <button type="button" id="finishOrder" style="width:100%;padding:13px;margin-top:10px;background:#eee;border:0;border-radius:8px">
+          ${language === "ar" ? "إغلاق" : "Fermer"}
+        </button>
+      `;
+
+      if (whatsappWindow) {
+        whatsappWindow.location.href = whatsappUrl;
+      }
+
+      $("#finishOrder").addEventListener("click", () => modal.remove());
+
+    } catch (error) {
+      console.error(error);
+
+      if (whatsappWindow) whatsappWindow.close();
+
+      message.textContent = language === "ar"
+        ? "لم يتم تسجيل الطلب. حاول مرة أخرى."
+        : "La commande n'a pas été enregistrée. Réessayez.";
+
+      submit.disabled = false;
+      submit.textContent = language === "ar" ? "تأكيد الطلب عبر واتساب" : "Confirmer via WhatsApp";
+    }
+  });
+}
+
 (() => {
   const cfg = window.HAMADA_CONFIG || {};
   const ready = cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes("YOUR-PROJECT")
