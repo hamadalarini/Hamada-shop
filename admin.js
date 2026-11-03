@@ -1,4 +1,3 @@
-
 (() => {
   const cfg = window.HAMADA_CONFIG || {};
   const configured = cfg.SUPABASE_URL &&
@@ -337,3 +336,4 @@
 
   refreshSession();
 })();
+
