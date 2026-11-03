@@ -1,3 +1,4 @@
+
 (() => {
   const cfg = window.HAMADA_CONFIG || {};
   const configured = cfg.SUPABASE_URL &&
@@ -10,11 +11,13 @@
     : null;
 
   const $ = s => document.querySelector(s);
+
   const loginPanel = $("#loginPanel");
   const dashboard = $("#dashboard");
 
   const msg = (selector, text, bad = false) => {
     const el = $(selector);
+    if (!el) return;
     el.textContent = text;
     el.classList.toggle("error", bad);
   };
@@ -22,6 +25,8 @@
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])
   );
+
+  const statuses = ["جديد", "قيد المعالجة", "مكتمل", "ملغي"];
 
   async function isAdmin(user) {
     if (!user || !client) return false;
@@ -36,7 +41,7 @@
 
   async function refreshSession() {
     if (!client) {
-      msg("#loginMessage", "أكمل رابط Supabase ومفتاح anon/public داخل config.js.", true);
+      msg("#loginMessage", "تحقق من إعدادات config.js.", true);
       return;
     }
 
@@ -55,25 +60,24 @@
     loginPanel.classList.add("hidden");
     dashboard.classList.remove("hidden");
     loadAdminProducts();
+    loadAdminOrders();
   }
 
   $("#loginForm").addEventListener("submit", async e => {
     e.preventDefault();
 
     if (!client) {
-      return msg("#loginMessage", "أكمل إعدادات config.js أولاً.", true);
+      return msg("#loginMessage", "تحقق من إعدادات config.js.", true);
     }
 
-    msg("#loginMessage", "جارٍ تسجيل الدخول…");
+    msg("#loginMessage", "جارٍ تسجيل الدخول...");
 
     const { data, error } = await client.auth.signInWithPassword({
       email: $("#email").value.trim(),
       password: $("#password").value
     });
 
-    if (error) {
-      return msg("#loginMessage", error.message, true);
-    }
+    if (error) return msg("#loginMessage", error.message, true);
 
     if (!await isAdmin(data.user)) {
       await client.auth.signOut();
@@ -90,16 +94,124 @@
     loginPanel.classList.remove("hidden");
   });
 
+  // تحميل الطلبات
+  async function loadAdminOrders() {
+    const box = $("#adminOrders");
+    if (!box) return;
+
+    box.textContent = "جارٍ تحميل الطلبات...";
+    msg("#ordersMessage", "");
+
+    const { data, error } = await client.from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      box.textContent = "تعذر تحميل الطلبات: " + error.message;
+      msg("#ordersMessage", error.message, true);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      box.textContent = "لا توجد طلبات حالياً.";
+      return;
+    }
+
+    box.innerHTML = data.map(order => {
+      const date = order.created_at
+        ? new Date(order.created_at).toLocaleString("ar-MA")
+        : "";
+
+      return `
+        <article class="panel">
+          <h3>طلب رقم ${esc(order.id)}</h3>
+          <p><strong>الزبون:</strong> ${esc(order.customer_name)}</p>
+          <p><strong>الهاتف:</strong> ${esc(order.phone)}</p>
+          <p><strong>المدينة:</strong> ${esc(order.city)}</p>
+          <p><strong>العنوان:</strong> ${esc(order.address)}</p>
+          <p><strong>المنتج:</strong> ${esc(order.product_name)}</p>
+          <p><strong>المقاس:</strong> ${esc(order.size)}</p>
+          <p><strong>اللون:</strong> ${esc(order.color)}</p>
+          <p><strong>الكمية:</strong> ${esc(order.quantity)}</p>
+          <p><strong>السعر:</strong> ${esc(order.unit_price)} درهم</p>
+          <p><strong>ملاحظات:</strong> ${esc(order.notes)}</p>
+          <p><strong>التاريخ:</strong> ${esc(date)}</p>
+
+          <label>
+            حالة الطلب:
+            <select class="order-status" data-order-id="${esc(order.id)}">
+              ${statuses.map(status => `
+                <option value="${esc(status)}"
+                  ${order.status === status ? "selected" : ""}>
+                  ${esc(status)}
+                </option>
+              `).join("")}
+            </select>
+          </label>
+
+          <button class="button gold-button save-order-status"
+            type="button" data-order-id="${esc(order.id)}">
+            حفظ الحالة
+          </button>
+
+          <p class="order-status-message" data-message-id="${esc(order.id)}"></p>
+        </article>
+      `;
+    }).join("");
+
+    box.querySelectorAll(".save-order-status").forEach(button => {
+      button.addEventListener("click", () => {
+        updateOrderStatus(button.dataset.orderId);
+      });
+    });
+  }
+
+  // تغيير حالة الطلب وحفظها
+  async function updateOrderStatus(id) {
+    const select = document.querySelector(
+      `.order-status[data-order-id="${CSS.escape(String(id))}"]`
+    );
+
+    const message = document.querySelector(
+      `.order-status-message[data-message-id="${CSS.escape(String(id))}"]`
+    );
+
+    if (!select || !message) return;
+
+    const newStatus = select.value;
+    message.textContent = "جارٍ حفظ الحالة...";
+
+    const { data, error } = await client.from("orders")
+      .update({ status: newStatus })
+      .eq("id", id)
+      .select("id, status");
+
+    if (error) {
+      message.textContent = "فشل الحفظ: " + error.message;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      message.textContent = "لم يتم تحديث الطلب. تحقق من صلاحيات الإدارة.";
+      return;
+    }
+
+    message.textContent = "تم حفظ حالة الطلب بنجاح.";
+  }
+
+  $("#refreshOrders")?.addEventListener("click", loadAdminOrders);
+
+  // تحميل المنتجات
   async function loadAdminProducts() {
     const box = $("#adminProducts");
+    if (!box) return;
 
     const { data, error } = await client.from("products")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
-      box.textContent = "تعذر تحميل المنتجات. تحقق من الأعمدة وسياسات RLS.";
-      console.error(error);
+      box.textContent = "تعذر تحميل المنتجات: " + error.message;
       return;
     }
 
@@ -113,8 +225,7 @@
         <div>
           <strong>${esc(p.name)}</strong>
           <small>
-            ${esc(p.category)} ·
-            ${Number(p.price).toFixed(2)} DH ·
+            ${esc(p.category)} · ${Number(p.price).toFixed(2)} DH ·
             ${p.is_active ? "ظاهر" : "مخفي"}
           </small>
         </div>
@@ -146,7 +257,6 @@
     if (priceText === null) return;
 
     const price = Number(priceText);
-
     if (!Number.isFinite(price) || price < 0) {
       alert("يرجى إدخال سعر صحيح.");
       return;
@@ -218,7 +328,8 @@
       .eq("id", id);
 
     if (error) {
-      return alert("تعذر الحذف: " + error.message);
+      alert("تعذر الحذف: " + error.message);
+      return;
     }
 
     loadAdminProducts();
@@ -226,5 +337,3 @@
 
   refreshSession();
 })();
-
-
