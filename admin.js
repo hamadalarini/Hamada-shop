@@ -2,7 +2,7 @@
   const cfg = window.HAMADA_CONFIG || {};
   const configured = cfg.SUPABASE_URL &&
     !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
-    cfg.SUPABASE_ANON_KEY &&
+    cfg.SUPABASE__KEY &&
     !cfg.SUPABASE_ANON_KEY.includes("PASTE_");
 
   const client = configured && window.supabase
