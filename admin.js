@@ -181,10 +181,11 @@
     });
   }
 
-  // طباعة الفاتورة
-  function printInvoice(order) {
-    const total =
-      Number(order.unit_price || 0) * Number(order.quantity || 0);
+  تحميل الفاتورة PDF
+  <button onclick="window.print()">تحميل الفاتورة PDF</button>
+<p style="text-align:center">
+  بعد فتح نافذة الطباعة، اختر مشاركة ثم حفظ في الملفات.
+</p>
 
     const date = order.created_at
       ? new Date(order.created_at).toLocaleString("ar-MA")
