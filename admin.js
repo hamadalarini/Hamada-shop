@@ -1,16 +1,18 @@
+
 (() => {
   const cfg = window.HAMADA_CONFIG || {};
-  const configured = cfg.SUPABASE_URL &&
+
+  const configured =
+    cfg.SUPABASE_URL &&
     !cfg.SUPABASE_URL.includes("YOUR-PROJECT") &&
     cfg.SUPABASE_ANON_KEY &&
-!cfg.SUPABASE_ANON_KEY.includes("PASTE_");
+    !cfg.SUPABASE_ANON_KEY.includes("PASTE_");
 
   const client = configured && window.supabase
     ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
     : null;
 
   const $ = s => document.querySelector(s);
-
   const loginPanel = $("#loginPanel");
   const dashboard = $("#dashboard");
 
@@ -62,7 +64,7 @@
     loadAdminOrders();
   }
 
-  $("#loginForm").addEventListener("submit", async e => {
+  $("#loginForm")?.addEventListener("submit", async e => {
     e.preventDefault();
 
     if (!client) {
@@ -87,7 +89,7 @@
     showDashboard();
   });
 
-  $("#logoutBtn").addEventListener("click", async () => {
+  $("#logoutBtn")?.addEventListener("click", async () => {
     await client.auth.signOut();
     dashboard.classList.add("hidden");
     loginPanel.classList.remove("hidden");
@@ -96,7 +98,7 @@
   // تحميل الطلبات
   async function loadAdminOrders() {
     const box = $("#adminOrders");
-    if (!box) return;
+    if (!box || !client) return;
 
     box.textContent = "جارٍ تحميل الطلبات...";
     msg("#ordersMessage", "");
@@ -111,61 +113,169 @@
       return;
     }
 
-    if (!data || data.length === 0) {
+    if (!data?.length) {
       box.textContent = "لا توجد طلبات حالياً.";
       return;
     }
 
-    box.innerHTML = data.map(order => {
-      const date = order.created_at
-        ? new Date(order.created_at).toLocaleString("ar-MA")
-        : "";
+    box.innerHTML = data.map(order => `
+      <article class="panel">
+        <h3>طلب رقم ${esc(order.id)}</h3>
+        <p><strong>الزبون:</strong> ${esc(order.customer_name)}</p>
+        <p><strong>الهاتف:</strong> ${esc(order.phone)}</p>
+        <p><strong>المدينة:</strong> ${esc(order.city)}</p>
+        <p><strong>العنوان:</strong> ${esc(order.address)}</p>
+        <p><strong>المنتج:</strong> ${esc(order.product_name)}</p>
+        <p><strong>المقاس:</strong> ${esc(order.size)}</p>
+        <p><strong>اللون:</strong> ${esc(order.color)}</p>
+        <p><strong>الكمية:</strong> ${esc(order.quantity)}</p>
+        <p><strong>سعر القطعة:</strong> ${esc(order.unit_price)} درهم</p>
+        <p><strong>الإجمالي:</strong>
+          ${esc(Number(order.unit_price || 0) * Number(order.quantity || 0))} درهم
+        </p>
+        <p><strong>ملاحظات:</strong> ${esc(order.notes)}</p>
+        <p><strong>التاريخ:</strong>
+          ${esc(order.created_at ? new Date(order.created_at).toLocaleString("ar-MA") : "")}
+        </p>
 
-      return `
-        <article class="panel">
-          <h3>طلب رقم ${esc(order.id)}</h3>
-          <p><strong>الزبون:</strong> ${esc(order.customer_name)}</p>
-          <p><strong>الهاتف:</strong> ${esc(order.phone)}</p>
-          <p><strong>المدينة:</strong> ${esc(order.city)}</p>
-          <p><strong>العنوان:</strong> ${esc(order.address)}</p>
-          <p><strong>المنتج:</strong> ${esc(order.product_name)}</p>
-          <p><strong>المقاس:</strong> ${esc(order.size)}</p>
-          <p><strong>اللون:</strong> ${esc(order.color)}</p>
-          <p><strong>الكمية:</strong> ${esc(order.quantity)}</p>
-          <p><strong>السعر:</strong> ${esc(order.unit_price)} درهم</p>
-          <p><strong>ملاحظات:</strong> ${esc(order.notes)}</p>
-          <p><strong>التاريخ:</strong> ${esc(date)}</p>
+        <label>
+          حالة الطلب:
+          <select class="order-status" data-order-id="${esc(order.id)}">
+            ${statuses.map(status => `
+              <option value="${esc(status)}"
+                ${order.status === status ? "selected" : ""}>
+                ${esc(status)}
+              </option>
+            `).join("")}
+          </select>
+        </label>
 
-          <label>
-            حالة الطلب:
-            <select class="order-status" data-order-id="${esc(order.id)}">
-              ${statuses.map(status => `
-                <option value="${esc(status)}"
-                  ${order.status === status ? "selected" : ""}>
-                  ${esc(status)}
-                </option>
-              `).join("")}
-            </select>
-          </label>
+        <button class="button gold-button save-order-status"
+          type="button" data-order-id="${esc(order.id)}">
+          حفظ الحالة
+        </button>
 
-          <button class="button gold-button save-order-status"
-            type="button" data-order-id="${esc(order.id)}">
-            حفظ الحالة
-          </button>
+        <button class="button print-order"
+          type="button" data-order-id="${esc(order.id)}">
+          طباعة الفاتورة
+        </button>
 
-          <p class="order-status-message" data-message-id="${esc(order.id)}"></p>
-        </article>
-      `;
-    }).join("");
+        <p class="order-status-message"
+          data-message-id="${esc(order.id)}"></p>
+      </article>
+    `).join("");
 
     box.querySelectorAll(".save-order-status").forEach(button => {
+      button.addEventListener("click", () =>
+        updateOrderStatus(button.dataset.orderId)
+      );
+    });
+
+    box.querySelectorAll(".print-order").forEach(button => {
       button.addEventListener("click", () => {
-        updateOrderStatus(button.dataset.orderId);
+        const order = data.find(
+          item => String(item.id) === String(button.dataset.orderId)
+        );
+        if (order) printInvoice(order);
       });
     });
   }
 
-  // تغيير حالة الطلب وحفظها
+  // طباعة الفاتورة
+  function printInvoice(order) {
+    const total =
+      Number(order.unit_price || 0) * Number(order.quantity || 0);
+
+    const date = order.created_at
+      ? new Date(order.created_at).toLocaleString("ar-MA")
+      : "";
+
+    const w = window.open("", "_blank");
+
+    if (!w) {
+      alert("تعذر فتح الفاتورة. اسمح بالنوافذ المنبثقة في المتصفح.");
+      return;
+    }
+
+    w.document.open();
+    w.document.write(`
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>فاتورة Hamada Shop</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            direction: rtl;
+            padding: 20px;
+            color: #222;
+          }
+          .invoice {
+            max-width: 700px;
+            margin: auto;
+            border: 2px solid #c5a34a;
+            padding: 25px;
+          }
+          h1, h2 { text-align: center; }
+          h1 { color: #b18b2e; }
+          .line {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
+          }
+          .total {
+            font-size: 22px;
+            font-weight: bold;
+            color: #9a7623;
+            margin-top: 20px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 35px;
+          }
+          button {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 25px;
+            background: #c5a34a;
+            border: 0;
+            font-size: 16px;
+          }
+          @media print {
+            button { display: none; }
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice">
+          <h1>Hamada Shop</h1>
+          <h2>فاتورة طلب</h2>
+          <div class="line"><strong>رقم الطلب:</strong> ${esc(order.id)}</div>
+          <div class="line"><strong>التاريخ:</strong> ${esc(date)}</div>
+          <div class="line"><strong>الزبون:</strong> ${esc(order.customer_name)}</div>
+          <div class="line"><strong>الهاتف:</strong> ${esc(order.phone)}</div>
+          <div class="line"><strong>المدينة:</strong> ${esc(order.city)}</div>
+          <div class="line"><strong>العنوان:</strong> ${esc(order.address)}</div>
+          <div class="line"><strong>المنتج:</strong> ${esc(order.product_name)}</div>
+          <div class="line"><strong>المقاس:</strong> ${esc(order.size)}</div>
+          <div class="line"><strong>اللون:</strong> ${esc(order.color)}</div>
+          <div class="line"><strong>الكمية:</strong> ${esc(order.quantity)}</div>
+          <div class="line"><strong>سعر القطعة:</strong> ${esc(order.unit_price)} درهم</div>
+          <div class="line"><strong>الحالة:</strong> ${esc(order.status)}</div>
+          <div class="line"><strong>ملاحظات:</strong> ${esc(order.notes)}</div>
+          <div class="total">الإجمالي: ${esc(total)} درهم</div>
+          <div class="footer">شكراً لثقتكم في Hamada Shop</div>
+        </div>
+        <button onclick="window.print()">طباعة الفاتورة</button>
+      </body>
+      </html>
+    `);
+    w.document.close();
+  }
+
+  // حفظ حالة الطلب
   async function updateOrderStatus(id) {
     const select = document.querySelector(
       `.order-status[data-order-id="${CSS.escape(String(id))}"]`
@@ -177,11 +287,10 @@
 
     if (!select || !message) return;
 
-    const newStatus = select.value;
     message.textContent = "جارٍ حفظ الحالة...";
 
     const { data, error } = await client.from("orders")
-      .update({ status: newStatus })
+      .update({ status: select.value })
       .eq("id", id)
       .select("id, status");
 
@@ -190,12 +299,9 @@
       return;
     }
 
-    if (!data || data.length === 0) {
-      message.textContent = "لم يتم تحديث الطلب. تحقق من صلاحيات الإدارة.";
-      return;
-    }
-
-    message.textContent = "تم حفظ حالة الطلب بنجاح.";
+    message.textContent = data?.length
+      ? "تم حفظ حالة الطلب بنجاح."
+      : "لم يتم تحديث الطلب. تحقق من صلاحيات الإدارة.";
   }
 
   $("#refreshOrders")?.addEventListener("click", loadAdminOrders);
@@ -203,7 +309,7 @@
   // تحميل المنتجات
   async function loadAdminProducts() {
     const box = $("#adminProducts");
-    if (!box) return;
+    if (!box || !client) return;
 
     const { data, error } = await client.from("products")
       .select("*")
@@ -234,11 +340,15 @@
     `).join("");
 
     box.querySelectorAll("[data-edit]").forEach(btn => {
-      btn.addEventListener("click", () => editProduct(btn.dataset.edit, data));
+      btn.addEventListener("click", () =>
+        editProduct(btn.dataset.edit, data)
+      );
     });
 
     box.querySelectorAll("[data-delete]").forEach(btn => {
-      btn.addEventListener("click", () => deleteProduct(btn.dataset.delete));
+      btn.addEventListener("click", () =>
+        deleteProduct(btn.dataset.delete)
+      );
     });
   }
 
@@ -273,17 +383,15 @@
     const description_fr = prompt("الوصف بالفرنسية:", p.description_fr || "");
     if (description_fr === null) return;
 
-    const { error } = await client.from("products")
-      .update({
-        name: name.trim(),
-        name_fr: name_fr.trim() || null,
-        price,
-        category: category.trim(),
-        image_url: image_url.trim() || null,
-        description: description.trim() || null,
-        description_fr: description_fr.trim() || null
-      })
-      .eq("id", id);
+    const { error } = await client.from("products").update({
+      name: name.trim(),
+      name_fr: name_fr.trim() || null,
+      price,
+      category: category.trim(),
+      image_url: image_url.trim() || null,
+      description: description.trim() || null,
+      description_fr: description_fr.trim() || null
+    }).eq("id", id);
 
     if (error) {
       alert("تعذر تعديل المنتج: " + error.message);
@@ -294,7 +402,7 @@
     loadAdminProducts();
   }
 
-  $("#productForm").addEventListener("submit", async e => {
+  $("#productForm")?.addEventListener("submit", async e => {
     e.preventDefault();
 
     const payload = {
@@ -336,4 +444,3 @@
 
   refreshSession();
 })();
-
