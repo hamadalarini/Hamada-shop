@@ -9,7 +9,10 @@
     !cfg.SUPABASE_ANON_KEY.includes("PASTE_");
 
   const client = configured && window.supabase
-    ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
+    ? window.supabase.createClient(
+        cfg.SUPABASE_URL,
+        cfg.SUPABASE_ANON_KEY
+      )
     : null;
 
   const $ = s => document.querySelector(s);
@@ -24,7 +27,13 @@
   };
 
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c =>
-    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])
+    ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[c])
   );
 
   const statuses = ["جديد", "قيد المعالجة", "مكتمل", "ملغي"];
@@ -32,7 +41,8 @@
   async function isAdmin(user) {
     if (!user || !client) return false;
 
-    const { data, error } = await client.from("admin_users")
+    const { data, error } = await client
+      .from("admin_users")
       .select("user_id")
       .eq("user_id", user.id)
       .maybeSingle();
@@ -52,14 +62,14 @@
     if (user && await isAdmin(user)) {
       showDashboard();
     } else {
-      loginPanel.classList.remove("hidden");
-      dashboard.classList.add("hidden");
+      loginPanel?.classList.remove("hidden");
+      dashboard?.classList.add("hidden");
     }
   }
 
   function showDashboard() {
-    loginPanel.classList.add("hidden");
-    dashboard.classList.remove("hidden");
+    loginPanel?.classList.add("hidden");
+    dashboard?.classList.remove("hidden");
     loadAdminProducts();
     loadAdminOrders();
   }
@@ -78,11 +88,17 @@
       password: $("#password").value
     });
 
-    if (error) return msg("#loginMessage", error.message, true);
+    if (error) {
+      return msg("#loginMessage", error.message, true);
+    }
 
     if (!await isAdmin(data.user)) {
       await client.auth.signOut();
-      return msg("#loginMessage", "هذا الحساب غير موجود في قائمة admin_users.", true);
+      return msg(
+        "#loginMessage",
+        "هذا الحساب غير موجود في قائمة admin_users.",
+        true
+      );
     }
 
     msg("#loginMessage", "");
@@ -90,9 +106,9 @@
   });
 
   $("#logoutBtn")?.addEventListener("click", async () => {
-    await client.auth.signOut();
-    dashboard.classList.add("hidden");
-    loginPanel.classList.remove("hidden");
+    if (client) await client.auth.signOut();
+    dashboard?.classList.add("hidden");
+    loginPanel?.classList.remove("hidden");
   });
 
   // تحميل الطلبات
@@ -103,7 +119,8 @@
     box.textContent = "جارٍ تحميل الطلبات...";
     msg("#ordersMessage", "");
 
-    const { data, error } = await client.from("orders")
+    const { data, error } = await client
+      .from("orders")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -131,11 +148,14 @@
         <p><strong>الكمية:</strong> ${esc(order.quantity)}</p>
         <p><strong>سعر القطعة:</strong> ${esc(order.unit_price)} درهم</p>
         <p><strong>الإجمالي:</strong>
-          ${esc(Number(order.unit_price || 0) * Number(order.quantity || 0))} درهم
+          ${esc(Number(order.unit_price || 0) * Number(order.quantity || 0))}
+          درهم
         </p>
         <p><strong>ملاحظات:</strong> ${esc(order.notes)}</p>
         <p><strong>التاريخ:</strong>
-          ${esc(order.created_at ? new Date(order.created_at).toLocaleString("ar-MA") : "")}
+          ${esc(order.created_at
+            ? new Date(order.created_at).toLocaleString("ar-MA")
+            : "")}
         </p>
 
         <label>
@@ -157,7 +177,7 @@
 
         <button class="button print-order"
           type="button" data-order-id="${esc(order.id)}">
-          طباعة الفاتورة
+          تحميل الفاتورة PDF
         </button>
 
         <p class="order-status-message"
@@ -181,11 +201,10 @@
     });
   }
 
-  تحميل الفاتورة PDF
-  <button onclick="window.print()">تحميل الفاتورة PDF</button>
-<p style="text-align:center">
-  بعد فتح نافذة الطباعة، اختر مشاركة ثم حفظ في الملفات.
-</p>
+  // إنشاء الفاتورة
+  function printInvoice(order) {
+    const total =
+      Number(order.unit_price || 0) * Number(order.quantity || 0);
 
     const date = order.created_at
       ? new Date(order.created_at).toLocaleString("ar-MA")
@@ -242,9 +261,14 @@
             background: #c5a34a;
             border: 0;
             font-size: 16px;
+            cursor: pointer;
+          }
+          .hint {
+            text-align: center;
+            font-size: 14px;
           }
           @media print {
-            button { display: none; }
+            button, .hint { display: none; }
             body { padding: 0; }
           }
         </style>
@@ -253,6 +277,7 @@
         <div class="invoice">
           <h1>Hamada Shop</h1>
           <h2>فاتورة طلب</h2>
+
           <div class="line"><strong>رقم الطلب:</strong> ${esc(order.id)}</div>
           <div class="line"><strong>التاريخ:</strong> ${esc(date)}</div>
           <div class="line"><strong>الزبون:</strong> ${esc(order.customer_name)}</div>
@@ -266,17 +291,26 @@
           <div class="line"><strong>سعر القطعة:</strong> ${esc(order.unit_price)} درهم</div>
           <div class="line"><strong>الحالة:</strong> ${esc(order.status)}</div>
           <div class="line"><strong>ملاحظات:</strong> ${esc(order.notes)}</div>
+
           <div class="total">الإجمالي: ${esc(total)} درهم</div>
           <div class="footer">شكراً لثقتكم في Hamada Shop</div>
         </div>
-        <button onclick="window.print()">طباعة الفاتورة</button>
+
+        <button onclick="window.print()">
+          تحميل الفاتورة PDF
+        </button>
+
+        <p class="hint">
+          بعد فتح معاينة الطباعة، اختر مشاركة ثم حفظ في الملفات.
+        </p>
       </body>
       </html>
     `);
+
     w.document.close();
   }
 
-  // حفظ حالة الطلب
+  // تحديث حالة الطلب
   async function updateOrderStatus(id) {
     const select = document.querySelector(
       `.order-status[data-order-id="${CSS.escape(String(id))}"]`
@@ -286,11 +320,12 @@
       `.order-status-message[data-message-id="${CSS.escape(String(id))}"]`
     );
 
-    if (!select || !message) return;
+    if (!select || !message || !client) return;
 
     message.textContent = "جارٍ حفظ الحالة...";
 
-    const { data, error } = await client.from("orders")
+    const { data, error } = await client
+      .from("orders")
       .update({ status: select.value })
       .eq("id", id)
       .select("id, status");
@@ -312,7 +347,8 @@
     const box = $("#adminProducts");
     if (!box || !client) return;
 
-    const { data, error } = await client.from("products")
+    const { data, error } = await client
+      .from("products")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -406,6 +442,10 @@
   $("#productForm")?.addEventListener("submit", async e => {
     e.preventDefault();
 
+    if (!client) {
+      return msg("#productMessage", "تحقق من إعدادات config.js.", true);
+    }
+
     const payload = {
       name: $("#name").value.trim(),
       name_fr: $("#name_fr").value.trim() || null,
@@ -431,7 +471,8 @@
   async function deleteProduct(id) {
     if (!confirm("هل تريد حذف هذا المنتج؟")) return;
 
-    const { error } = await client.from("products")
+    const { error } = await client
+      .from("products")
       .delete()
       .eq("id", id);
 
@@ -445,3 +486,4 @@
 
   refreshSession();
 })();
+
